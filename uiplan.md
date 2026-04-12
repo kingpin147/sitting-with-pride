@@ -1,80 +1,83 @@
-Onboarding UI & Frontend Code Guide
-To build a premium onboarding experience, we will use the Multi-State Box component in Wix Studio. This allows us to keep the user focused on one category of information at a time without overwhelming them.
+Master UI Specification: Premium Onboarding (Universal Navigation)
+This is the comprehensive design and technical blueprint for the onboarding experience. It combines granular field specifications with a centralized navigation flow using universal Next and Back buttons.
 
-🎨 Visual Design Principles
-Progress Tracking: Always show a Progress Bar at the top so users know how much is left.
-Inclusive Microcopy: Use labels like "What is your chosen name?" and "What are your pronouns?" to affirm identity.
-Visual Feedback: Use subtle hover effects on buttons and clear error messages ($w('#errorText').show()).
-🧑⚕️ Caregiver Onboarding (4 Steps)
-Step 1: Basic Identity (stateIdentity)
-Inputs: #firstName, #lastName, #chosenName, #pronouns (Dropdown), #zipCode.
-Logic: Click "Next" -> Call getCoordsFromZip (Backend) -> Move to next state.
-Step 2: Professional Info (stateProfessional)
-Inputs: #yearsExperience (Number), #certifications (Multi-Select or Checkboxes), #hourlyRate (Number).
-Services: Checkbox group for Live-In, Part-Time, Travel, etc.
-Step 3: Profile & About (stateProfile)
-Inputs: #bio (Rich Text or Text Box), #languages (Tags/Selection).
-Media: #uploadPhoto (Wix Upload Button).
-Step 4: Verification Paywall (statePayment)
-Content: Information about the $35 background check.
-Action: #verifyBtn -> Triggers wix-pricing-plans-frontend.checkout.
-👨👩👧 Family Onboarding (3 Steps)
-Step 1: Family Basics
-Inputs: #familyName, #chosenNames, #zipCode.
-Step 2: Care Needs
-Inputs: #childCount, #childAges, #careType (Dropdown).
-Step 3: Environment & Preferences
-Inputs: #specialNeeds (Text Box), #homeNotes, #matchPreferences.
-💻 Generic Velo Logic (Copy & Adapt)
-Add this to your Onboarding Page Code:
+🏛️ UI Architecture
+Components
+Multi-State Box (#multiStateBox): Houses all form steps.
+Progress Bar (#progressBar): Persistent at the top.
+Navigation Footer: Contains #backBtn and #nextBtn, positioned outside the Multi-State Box.
+Universal Navigation Logic
+A single navigate() function handles all transitions.
 
-javascript
-import { saveCaregiverProfile, completeOnboarding } from 'backend/onboarding.web';
-import { getCoordsFromZip } from 'backend/location.web';
-import { checkout } from 'wix-pricing-plans-frontend';
-import wixLocation from 'wix-location';
-import { currentMember } from 'wix-members-frontend';
-$w.onReady(function () {
-    // Initial State
-    $w('#multiStateBox').changeState("stateIdentity");
-    $w('#progressBar').value = 25;
-    // Navigation: Step 1 -> Step 2
-    $w('#nextBtn1').onClick(async () => {
-        if (validateStep1()) {
-            $w('#multiStateBox').changeState("stateProfessional");
-            $w('#progressBar').value = 50;
-        }
-    });
-    // Final Submission & Payment
-    $w('#verifyBtn').onClick(async () => {
-        const member = await currentMember.getMember();
-        
-        // 1. Save all data to CMS
-        const profileData = collectFormData();
-        await saveCaregiverProfile(profileData);
-        
-        // 2. Mark onboarding phase 1 complete
-        await completeOnboarding(member._id);
-        // 3. Open Payment for $35 Verification Plan
-        const planId = "YOUR_VERIFICATION_PLAN_ID"; // Get from Wix Dashboard
-        await checkout.startCheckout(planId);
-    });
-});
-function validateStep1() {
-    // Add logic to check if required fields are filled
-    return true; 
-}
-function collectFormData() {
-    // Return an object with all input values
-    return {
-        fullName: $w('#firstName').value + " " + $w('#lastName').value,
-        zipCode: $w('#zipCode').value,
-        // ... add all other fields
-    };
-}
-🛠️ Wix Components to Add
-Multi-State Box (ID: #multiStateBox)
-Progress Bar (ID: #progressBar)
-Text Inputs / Dropdowns (Match IDs in code)
-Upload Button (For photos)
-Success Lightbox (Optional, to show after payment)
+Validation: Only the active state's fields are validated.
+State Array: ["state1", "state2", ...] tracks the linear path.
+Progress: Calculated as (index + 1) / totalStates.
+🧑⚕️ Caregiver Onboarding (4 States)
+State Index	State ID	Logic Context
+0	stateIdentity	Back hidden. Next triggers ZIP/Geo-lookup.
+1	stateProfessional	Back visible. Next triggers Form validation.
+2	stateProfile	Back visible. Next triggers Media/Bio validation.
+3	statePayment	Back visible. Next triggers Checkout ($35).
+🛠️ Field Details (Caregiver)
+State 1: Identity (stateIdentity)
+Element ID	Type	Label	Options / Values	Validation
+#firstName	Text	First Name		Required
+#lastName	Text	Last Name		Required
+#chosenName	Text	Chosen Name		Optional
+#pronouns	Dropdown	Pronouns	She/Her, He/Him, They/Them, Other	Required
+#zipCode	Text	ZIP Code		5-Digit Regex
+State 2: Professional (stateProfessional)
+Element ID	Type	Label	Options / Values	Validation
+#yearsExp	Number	Years Exp.		Required (Min 0)
+#certs	Selection	Certs	CPR, First Aid, CNA, RN, Other	Required (Min 1)
+#hourlyRate	Number	Hourly Rate		Required (Min 15)
+#services	Checkbox	Services	Live-In, Part-Time, Travel, Overnight	Required (Min 1)
+State 3: Profile (stateProfile)
+Element ID	Type	Label	Options / Values	Validation
+#bio	Text Box	Bio		Required (Min 100)
+#languages	Tags	Languages	English, Spanish, French, Other	Required (Min 1)
+#uploadPhoto	Upload	Photo		Required (JPG/PNG)
+State 4: Payment (statePayment)
+Action: #nextBtn label changes to "Verify & Pay $35".
+Logic: Triggers checkout.startCheckout(YOUR_VERIFICATION_PLAN_ID).
+👨👩👧 Family Onboarding (3 States)
+State Index	State ID	Logic Context
+0	stateBasics	Back hidden. Next triggers ZIP/Geo-lookup.
+1	stateNeeds	Back visible. Next triggers Needs validation.
+2	stateEnvironment	Back visible. Next triggers Save & Redirect.
+🛠️ Field Details (Family)
+State 1: Basics (stateBasics)
+Element ID	Type	Label	Options / Values	Validation
+#familyName	Text	Family Name		Required
+#chosenNames	Text	Chosen Names		Optional
+#zipCode	Text	ZIP Code		5-Digit Regex
+State 2: Needs (stateNeeds)
+Element ID	Type	Label	Options / Values	Validation
+#childCount	Number	People count		Required
+#childAges	Text	Ages		Required
+#careType	Dropdown	Care Type	Nanny, Sitter, Pet Care, Senior Care	Required
+State 3: Environment (stateEnvironment)
+Element ID	Type	Label	Options / Values	Validation
+#specialNeeds	Text Area	Sp. Needs		Optional
+#homeNotes	Text Area	Home Notes		Optional
+#preferences	Text Area	Ideal Match		Required
+🎨 Design System: Interactions
+Button Behavior
+Hover: Subtle scale (1.02) + Shadow increase.
+Disabled: Lower opacity (0.5), cursor: not-allowed.
+Focus: Accessibility outline in Primary Indigo.
+Transition Effect
+Multi-State Box Animation: Slide Horizontal (duration: 300ms).
+User Review Required
+IMPORTANT
+
+Since we use a Single Next Button, we will implement a "State Router" in Velo. This router will dynamically determine which validation function to call based on the active state before allowing progress.
+
+TIP
+
+This structure is much more scalable. If you ever add a new step, we just add the state ID to the states array and the UI handles the rest.
+
+Next Steps
+Approval: Confirm if this master plan covers all your requirements.
+Code Implementation: I will write the centralized Velo logic for both pages.
+CSS Customization: I will provide the premium styling for the universal buttons and footer.
