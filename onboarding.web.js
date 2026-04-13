@@ -9,13 +9,13 @@ export const saveCaregiverProfile = webMethod(
   async (profileData) => {
     try {
       // Check if profile exists
-      const existing = await wixData.query("Caregivers")
+      const existing = await wixData.query("CaregiversCollection")
         .eq("userId", profileData.userId)
         .find();
 
       if (existing.items.length > 0) {
         // Update
-        return await wixData.update("Caregivers", {
+        return await wixData.update("CaregiversCollection", {
           ...existing.items[0],
           ...profileData
         });
@@ -27,7 +27,7 @@ export const saveCaregiverProfile = webMethod(
           isVisible: false,
           badge: "community"
         };
-        return await wixData.insert("Caregivers", toInsert);
+        return await wixData.insert("CaregiversCollection", toInsert);
       }
     } catch (error) {
       console.error("Save Caregiver failed:", error);
@@ -43,12 +43,12 @@ export const saveFamilyProfile = webMethod(
   Permissions.Anyone,
   async (profileData) => {
     try {
-      const existing = await wixData.query("Families")
+      const existing = await wixData.query("FamiliesCollection")
         .eq("userId", profileData.userId)
         .find();
 
       if (existing.items.length > 0) {
-        return await wixData.update("Families", {
+        return await wixData.update("FamiliesCollection", {
           ...existing.items[0],
           ...profileData
         });
@@ -58,7 +58,7 @@ export const saveFamilyProfile = webMethod(
           plan: "free",
           bookingFee: 8
         };
-        return await wixData.insert("Families", toInsert);
+        return await wixData.insert("FamiliesCollection", toInsert);
       }
     } catch (error) {
       console.error("Save Family failed:", error);

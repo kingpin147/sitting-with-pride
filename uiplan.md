@@ -12,39 +12,47 @@ A single navigate() function handles all transitions.
 Validation: Only the active state's fields are validated.
 State Array: ["state1", "state2", ...] tracks the linear path.
 Progress: Calculated as (index + 1) / totalStates.
-🧑⚕️ Caregiver Onboarding (4 States)
+
+🧑⚕️ Caregiver Onboarding (3 States)
+
 State Index	State ID	Logic Context
 0	stateIdentity	Back hidden. Next triggers ZIP/Geo-lookup.
 1	stateProfessional	Back visible. Next triggers Form validation.
 2	stateProfile	Back visible. Next triggers Media/Bio validation.
-3	statePayment	Back visible. Next triggers Checkout ($35).
+
 🛠️ Field Details (Caregiver)
+
 State 1: Identity (stateIdentity)
 Element ID	Type	Label	Options / Values	Validation
 #firstName	Text	First Name		Required
 #lastName	Text	Last Name		Required
 #chosenName	Text	Chosen Name		Optional
-#pronouns	Dropdown	Pronouns	She/Her, He/Him, They/Them, Other	Required
+#pronouns	Text	Pronouns		Required
 #zipCode	Text	ZIP Code		5-Digit Regex
+
 State 2: Professional (stateProfessional)
 Element ID	Type	Label	Options / Values	Validation
 #yearsExp	Number	Years Exp.		Required (Min 0)
 #certs	Selection	Certs	CPR, First Aid, CNA, RN, Other	Required (Min 1)
 #hourlyRate	Number	Hourly Rate		Required (Min 15)
 #services	Checkbox	Services	Live-In, Part-Time, Travel, Overnight	Required (Min 1)
+
 State 3: Profile (stateProfile)
 Element ID	Type	Label	Options / Values	Validation
 #bio	Text Box	Bio		Required (Min 100)
 #languages	Tags	Languages	English, Spanish, French, Other	Required (Min 1)
 #uploadPhoto	Upload	Photo		Required (JPG/PNG)
-State 4: Payment (statePayment)
-Action: #nextBtn label changes to "Verify & Pay $35".
-Logic: Triggers checkout.startCheckout(YOUR_VERIFICATION_PLAN_ID).
+
+save data to database and redirect them to buy pricing plan page
+
+
+
+
 👨👩👧 Family Onboarding (3 States)
 State Index	State ID	Logic Context
 0	stateBasics	Back hidden. Next triggers ZIP/Geo-lookup.
 1	stateNeeds	Back visible. Next triggers Needs validation.
-2	stateEnvironment	Back visible. Next triggers Save & Redirect.
+2	stateEnvironment	Back visible. Next triggers Environment validation.
 🛠️ Field Details (Family)
 State 1: Basics (stateBasics)
 Element ID	Type	Label	Options / Values	Validation
@@ -61,6 +69,10 @@ Element ID	Type	Label	Options / Values	Validation
 #specialNeeds	Text Area	Sp. Needs		Optional
 #homeNotes	Text Area	Home Notes		Optional
 #preferences	Text Area	Ideal Match		Required
+
+save data to database and redirect them to buy pricing plan page
+
+
 🎨 Design System: Interactions
 Button Behavior
 Hover: Subtle scale (1.02) + Shadow increase.
