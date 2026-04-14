@@ -1,4 +1,4 @@
-import { saveCaregiverProfile, completeOnboarding } from 'backend/onboarding.web';
+import { saveCaregiverProfile, completeOnboarding, getUserProfile } from 'backend/onboarding.web';
 import { getCoordsFromZip } from 'backend/location.web';
 import wixLocationFrontend from 'wix-location-frontend';
 import { currentMember } from 'wix-members-frontend';
@@ -17,6 +17,24 @@ $w.onReady(async function () {
     currentUser = await currentMember.getMember();
     if (!currentUser) {
         wixLocationFrontend.to("/");
+        return;
+    }
+
+    // ✅ Verify Role from Database
+    const profile = await getUserProfile(currentUser._id);
+    if (!profile || profile.role !== "caregiver") {
+        console.warn("Unauthorized access: User is not a caregiver.");
+        wixLocationFrontend.to("/"); // Or a generic unauthorized page
+        return;
+    }
+
+    // ✅ Handle Already Onboarded Case
+    if (profile.onboardingCompleted) {
+        $w('#headingText').text = "You have already applied wait for a family to contact you";
+        $w('#multiStateBox').hide();
+        $w('#nextBtn').hide();
+        $w('#backBtn').hide();
+        $w('#progressBar').hide();
         return;
     }
 
@@ -100,15 +118,24 @@ async function validateAndProcessStep1() {
 }
 
 async function submitForm() {
-    $w('#nextBtn').label = "Processing...";
+    $w('#nextBtn').label = "Uploading Photo...";
     try {
-        const profileData = collectCaregiverData(currentUser._id);
+        let photoUrl = "";
+        
+        // 📸 Handle File Upload
+        if ($w('#uploadPhoto').value.length > 0) {
+            const uploadResult = await $w('#uploadPhoto').startUpload();
+            photoUrl = uploadResult.url;
+        }
+
+        $w('#nextBtn').label = "Saving Profile...";
+        const profileData = collectCaregiverData(currentUser._id, photoUrl);
         await saveCaregiverProfile(profileData);
         await completeOnboarding(currentUser._id);
         wixLocationFrontend.to("/pricing-plans/plans-pricing");
     } catch (error) {
-        console.error(error);
-        showError("Submission failed. Please try again.");
+        console.error("Submission error:", error);
+        showError("Submission failed. Please check your internet and try again.");
         $w('#nextBtn').label = "Submit"; // revert
     }
 }
@@ -152,7 +179,7 @@ function validateStep3() {
     return true;
 }
 
-function collectCaregiverData(userId) {
+function collectCaregiverData(userId, photoUrl) {
     return {
         userId: userId,
         fullName: $w('#firstName').value + " " + $w('#lastName').value,
@@ -169,7 +196,7 @@ function collectCaregiverData(userId) {
         services: $w('#services').value,
         bio: $w('#bio').value,
         languages: $w('#languages').value,
-        profilePhoto: $w('#uploadPhoto').value[0] ? $w('#uploadPhoto').value[0].url : ""
+        profilePhoto: photoUrl || ""
     };
 }
 

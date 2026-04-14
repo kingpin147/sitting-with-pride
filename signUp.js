@@ -70,7 +70,7 @@ function redirectUser(role) {
     wixLocation.to("/family-onboarding");
   } 
   else if (role === "caregiver") {
-    wixLocation.to("/caregiver-onboarding");
+    wixLocation.to("/pricing-plans/plans-pricing");
   } 
   else {
     // fallback safety

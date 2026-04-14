@@ -90,3 +90,21 @@ export const completeOnboarding = webMethod(
     }
   }
 );
+/**
+ * Fetches the user profile including role and onboarding status
+ */
+export const getUserProfile = webMethod(
+  Permissions.Anyone,
+  async (userId) => {
+    try {
+      const profile = await wixData.query("UserProfiles")
+        .eq("userId", userId)
+        .find();
+      
+      return profile.items.length > 0 ? profile.items[0] : null;
+    } catch (error) {
+      console.error("Get user profile failed:", error);
+      throw error;
+    }
+  }
+);

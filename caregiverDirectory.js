@@ -1,5 +1,7 @@
 import { getNearbyCaregivers } from 'backend/directory.web';
 import { currentMember } from 'wix-members-frontend';
+import { getUserProfile } from 'backend/onboarding.web';
+import { hasAnyActivePlan } from 'backend/pricing.web';
 
 $w.onReady(async function () {
     $w('#loadingText').show();
@@ -10,6 +12,20 @@ $w.onReady(async function () {
         if (!member) {
             $w('#loadingText').text = "Please log in to view caregivers.";
             return;
+        }
+
+        // ✅ Verify Role from Database
+        const profile = await getUserProfile(member._id);
+        if (!profile || profile.role !== "family") {
+             $w('#loadingText').text = "Access denied. The directory is only for family members.";
+             return;
+        }
+
+        // ✅ Check for ANY Active Pricing Plan
+        const planActive = await hasAnyActivePlan();
+        if (!planActive) {
+             $w('#loadingText').text = "An active pricing plan is required to view the directory.";
+             return;
         }
 
         const caregivers = await getNearbyCaregivers(member._id);

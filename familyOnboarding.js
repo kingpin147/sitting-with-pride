@@ -1,4 +1,4 @@
-import { saveFamilyProfile, completeOnboarding } from 'backend/onboarding.web';
+import { saveFamilyProfile, completeOnboarding, getUserProfile } from 'backend/onboarding.web';
 import { getCoordsFromZip } from 'backend/location.web';
 import wixLocationFrontend from 'wix-location-frontend';
 import { currentMember } from 'wix-members-frontend';
@@ -16,6 +16,14 @@ $w.onReady(async function () {
     // Ensure current user is logged in
     currentUser = await currentMember.getMember();
     if (!currentUser) {
+        wixLocationFrontend.to("/");
+        return;
+    }
+
+    // ✅ Verify Role from Database
+    const profile = await getUserProfile(currentUser._id);
+    if (!profile || profile.role !== "family") {
+        console.warn("Unauthorized access: User is not a family member.");
         wixLocationFrontend.to("/");
         return;
     }

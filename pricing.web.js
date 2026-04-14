@@ -44,3 +44,18 @@ export const hasActivePlan = webMethod(
     }
   }
 );
+/**
+ * Checks if the member has ANY active plan
+ */
+export const hasAnyActivePlan = webMethod(
+  Permissions.Anyone,
+  async () => {
+    try {
+      const activePlans = await orders.listCurrentMemberOrders();
+      return activePlans.some(order => order.status === 'ACTIVE');
+    } catch (error) {
+      console.error("Plan check failed:", error);
+      return false;
+    }
+  }
+);
