@@ -93,3 +93,70 @@ Next Steps
 Approval: Confirm if this master plan covers all your requirements.
 Code Implementation: I will write the centralized Velo logic for both pages.
 CSS Customization: I will provide the premium styling for the universal buttons and footer.
+
+
+Final Integrated Onboarding & Directory Flows
+This flowchart reflects the actual code implementation using the Master Page for global navigation control and the pricing-gated logic for caregivers.
+
+🚀 Caregiver Onboarding & Pricing Flow
+⚠️ Failed to render Mermaid diagram: Parse error on line 5
+graph TD
+    A[<b>Signup Page</b>] --> B[Caregiver Signs Up]
+    B --> C[<b>Redirect: /pricing-plans/plans-pricing</b>]
+    
+    subgraph Site-Wide Logic (masterPage.js)
+    D[User on Any Site Page] --> E{isMember?}
+    E -- Yes --> F[Fetch Role & Plan Status]
+    F --> G{role == 'caregiver'?}
+    G -- Yes --> H{Has Active Plan?}
+    H -- Yes --> I{onboardingCompleted?}
+    I -- No --> J[<b>AUTO-REDIRECT: /caregiver-onboarding</b>]
+    end
+
+    J --> K{Caregiver Onboarding Page}
+    K --> L{onboardingCompleted?}
+    L -- Yes --> M[Display: 'You have already applied...']
+    L -- No --> N[Show Multi-Step Form]
+    N --> O[User Submits Form]
+    O --> P[Start Photo Upload]
+    P --> Q[Save Profile to Database]
+    Q --> R[Complete Onboarding in UserProfiles]
+    R --> S[Redirect to Final Success/Plans Page]
+🏠 Family Onboarding & Directory Access
+⚠️ Failed to render Mermaid diagram: Parse error on line 5
+graph TD
+    A[<b>Signup Page</b>] --> B[Family Member Signs Up]
+    B --> C[<b>Redirect: /family-onboarding</b>]
+    
+    subgraph Site-Wide UI (masterPage.js)
+    D[User on Any Site Page] --> E{isMember?}
+    E -- Yes --> F[Check Role & Plan Status]
+    F --> G{role == 'family'?}
+    G -- Yes --> H{Has Active Plan?}
+    H -- Yes --> I[<b>Inject Items into #menu1:</b><br/>1. Care Givers Directory<br/>2. Background Check]
+    end
+
+    I --> J[User clicks 'Care Givers Directory']
+    J --> K{/caregiver-directory Page}
+    K --> L{Check: Family + Has Plan?}
+    L -- Yes --> M[Fetch & Display Caregiver Repeater]
+    L -- No --> N[Deny Access / Show Subscribe Notice]
+🔑 Integrated Access Controls (Summary)
+IMPORTANT
+
+1. Unified Entry: All users go through masterPage.js logic which acts as a "Site Router" based on their DB role and subscription status. 2. Caregiver Gating: Caregivers are locked into the Pricing page until they pay, at which point the Master Page force-redirects them to Onboarding. 3. Family Premium Menu: Features like the Directory and Background Check only appear in the menu once a plan is active. 4. Single Entry Prevention: The onboardingCompleted flag prevents caregivers from re-submitting profiles and instead shows a "Wait for contact" message.
+
+Refining Marketplace Onboarding Logic
+Continue
+
+
+I have successfully implemented all the requested features and security controls for the "Sitting With Pride" platform.
+
+✅ Final Implementation Summary:
+Caregiver Flow Gating:
+
+Signup Redirection: Caregivers are now sent directly to the Pricing page after signup.
+Proactive Redirection: The 
+
+masterPage.js
+ now detects 
