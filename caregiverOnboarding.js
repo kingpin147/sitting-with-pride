@@ -1,5 +1,6 @@
 import { saveCaregiverProfile, completeOnboarding, getUserProfile } from 'backend/onboarding.web';
 import { getCoordsFromZip } from 'backend/location.web';
+import { logError, logWarning, logInfo } from 'backend/logger.web';
 import wixLocationFrontend from 'wix-location-frontend';
 import { currentMember } from 'wix-members-frontend';
 
@@ -10,23 +11,46 @@ const STATES = ["stateIdentity", "stateProfessional", "stateProfile"];
 let currentStateIndex = 0;
 let currentUser = null;
 
+// ⏱️ Helper: wait ms milliseconds
+function wait(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 $w.onReady(async function () {
     $w('#errorText').hide();
-    
+
     // Ensure current user is logged in
     currentUser = await currentMember.getMember();
     if (!currentUser) {
+        await logWarning("caregiverOnboarding.$w.onReady", "Redirect triggered: No member session found. User not logged in.");
         wixLocationFrontend.to("/");
         return;
     }
 
-    // ✅ Verify Role from Database
-    const profile = await getUserProfile(currentUser._id);
-    if (!profile || profile.role !== "caregiver") {
-        console.warn("Unauthorized access: User is not a caregiver.");
-        wixLocationFrontend.to("/"); // Or a generic unauthorized page
+    await logInfo("caregiverOnboarding.$w.onReady", "Member session found, verifying role...", currentUser._id);
+
+    // ✅ Verify Role from Database — with 1-second retry
+    let profile = await getUserProfile(currentUser._id);
+
+    if (!profile) {
+        await logWarning("caregiverOnboarding.$w.onReady", "Profile not found on first attempt. Retrying in 1s...", currentUser._id);
+        await wait(1000);
+        profile = await getUserProfile(currentUser._id);
+    }
+
+    if (!profile) {
+        await logError("caregiverOnboarding.$w.onReady", new Error("Profile still missing after retry. Redirecting to home."), currentUser._id);
+        wixLocationFrontend.to("/");
         return;
     }
+
+    if (profile.role !== "caregiver") {
+        await logWarning("caregiverOnboarding.$w.onReady", `Redirect triggered: Wrong role. Expected 'caregiver', got '${profile.role}'`, currentUser._id);
+        wixLocationFrontend.to("/");
+        return;
+    }
+
+    await logInfo("caregiverOnboarding.$w.onReady", "Role verified as 'caregiver'. Loading onboarding UI.", currentUser._id);
 
     // ✅ Handle Already Onboarded Case
     if (profile.onboardingCompleted) {
@@ -132,9 +156,11 @@ async function submitForm() {
         const profileData = collectCaregiverData(currentUser._id, photoUrl);
         await saveCaregiverProfile(profileData);
         await completeOnboarding(currentUser._id);
+        await logInfo("caregiverOnboarding.submitForm", "Caregiver onboarding completed successfully.", currentUser._id);
         wixLocationFrontend.to("/pricing-plans/plans-pricing");
     } catch (error) {
         console.error("Submission error:", error);
+        await logError("caregiverOnboarding.submitForm", error, currentUser._id);
         showError("Submission failed. Please check your internet and try again.");
         $w('#nextBtn').label = "Submit"; // revert
     }

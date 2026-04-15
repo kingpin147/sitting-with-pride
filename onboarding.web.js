@@ -1,5 +1,6 @@
 import { Permissions, webMethod } from "wix-web-module";
 import wixData from "wix-data";
+import { logError, logInfo } from "backend/logger.web";
 
 /**
  * Saves or updates a Caregiver profile.
@@ -31,6 +32,7 @@ export const saveCaregiverProfile = webMethod(
       }
     } catch (error) {
       console.error("Save Caregiver failed:", error);
+      await logError("onboarding.web.saveCaregiverProfile", error, profileData.userId);
       throw error;
     }
   }
@@ -62,6 +64,7 @@ export const saveFamilyProfile = webMethod(
       }
     } catch (error) {
       console.error("Save Family failed:", error);
+      await logError("onboarding.web.saveFamilyProfile", error, profileData.userId);
       throw error;
     }
   }
@@ -79,13 +82,20 @@ export const completeOnboarding = webMethod(
         .find();
 
       if (profile.items.length > 0) {
-        return await wixData.update("UserProfiles", {
+        const result = await wixData.update("UserProfiles", {
           ...profile.items[0],
           onboardingCompleted: true
         });
+        await logInfo("onboarding.web.completeOnboarding", "Onboarding marked as complete", userId);
+        return result;
+      } else {
+        const err = new Error(`User profile not found for Complete Onboarding. UserID: ${userId}`);
+        await logError("onboarding.web.completeOnboarding", err, userId);
+        throw err;
       }
     } catch (error) {
       console.error("Complete onboarding failed:", error);
+      await logError("onboarding.web.completeOnboarding", error, userId);
       throw error;
     }
   }
@@ -100,11 +110,19 @@ export const getUserProfile = webMethod(
       const profile = await wixData.query("UserProfiles")
         .eq("userId", userId)
         .find();
-      
-      return profile.items.length > 0 ? profile.items[0] : null;
+      if (profile.items.length > 0) {
+        return profile.items[0];
+      } else {
+        const err = new Error(`User profile not found in UserProfiles collection for UserID: ${userId}`);
+        await logError("onboarding.web.getUserProfile", err, userId);
+        return null;
+      }
     } catch (error) {
       console.error("Get user profile failed:", error);
-      throw error;
+       // We add extra info on the error to clarify
+      const descriptiveError = new Error(`Failed to query UserProfiles for UserID: ${userId}. Original error: ${error.message}`);
+      await logError("onboarding.web.getUserProfile", descriptiveError, userId);
+      throw descriptiveError;
     }
   }
 );

@@ -1,6 +1,7 @@
 import { Permissions, webMethod } from "wix-web-module";
 import { fetch } from 'wix-fetch';
 import { getSecret } from 'wix-secrets-backend';
+import { logError } from 'backend/logger.web';
 
 /**
  * Converts a ZIP code to Latitude and Longitude using Geocodio API.
@@ -26,11 +27,14 @@ export const getCoordsFromZip = webMethod(
           success: true
         };
       } else {
-        console.error("Geocoding failed:", data.error || "No results");
-        return { success: false, error: data.error || "No results" };
+        const errMsg = data.error || "No results";
+        console.error("Geocoding failed:", errMsg);
+        await logError("location.web.getCoordsFromZip", new Error(`Geocoding returned no results for ZIP: ${zip}. API message: ${errMsg}`));
+        return { success: false, error: errMsg };
       }
     } catch (error) {
       console.error("Location fetch error:", error);
+      await logError("location.web.getCoordsFromZip", error);
       return { success: false, error: error.message };
     }
   }

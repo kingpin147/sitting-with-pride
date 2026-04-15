@@ -1,6 +1,7 @@
 import { Permissions, webMethod } from "wix-web-module";
 import { authentication } from "wix-members-backend";
 import wixData from "wix-data";
+import { logError, logInfo } from "backend/logger.web";
 
 export const registerMember = webMethod(
   Permissions.Anyone,
@@ -21,10 +22,12 @@ export const registerMember = webMethod(
         onboardingCompleted: false
       });
 
+      await logInfo("register.web", `Registration successful for role: ${extraData.role}`, memberId);
       return result;
 
     } catch (error) {
       console.error("Registration error:", error);
+      await logError("register.web", error);
       throw error;
     }
   }

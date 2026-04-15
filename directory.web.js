@@ -1,5 +1,6 @@
 import { Permissions, webMethod } from "wix-web-module";
 import wixData from "wix-data";
+import { logError } from 'backend/logger.web';
 
 function getDistanceFromLatLonInMiles(lat1, lon1, lat2, lon2) {
     const R = 3958.8; // Radius of the earth in miles
@@ -26,9 +27,17 @@ export const getNearbyCaregivers = webMethod(
         .eq("userId", familyUserId)
         .find();
       
-      if (familyQuery.items.length === 0) throw new Error("Family user not found");
+      if (familyQuery.items.length === 0) {
+        const err = new Error(`Family user not found in Families collection. UserID: ${familyUserId}`);
+        await logError("directory.web.getNearbyCaregivers", err, familyUserId);
+        throw err;
+      }
       const familyLoc = familyQuery.items[0].location;
-      if (!familyLoc || !familyLoc.latitude) throw new Error("Family has no geolocation data");
+      if (!familyLoc || !familyLoc.latitude) {
+        const err = new Error(`Family has no geolocation data. UserID: ${familyUserId}`);
+        await logError("directory.web.getNearbyCaregivers", err, familyUserId);
+        throw err;
+      }
 
       // 2. Get all Caregivers
       const caregiversQuery = await wixData.query("Caregivers").find();
@@ -67,9 +76,17 @@ export const getNearbyFamilies = webMethod(
         .eq("userId", caregiverUserId)
         .find();
       
-      if (cgQuery.items.length === 0) throw new Error("Caregiver user not found");
+      if (cgQuery.items.length === 0) {
+        const err = new Error(`Caregiver user not found in Caregivers collection. UserID: ${caregiverUserId}`);
+        await logError("directory.web.getNearbyFamilies", err, caregiverUserId);
+        throw err;
+      }
       const cgLoc = cgQuery.items[0].location;
-      if (!cgLoc || !cgLoc.latitude) throw new Error("Caregiver has no geolocation data");
+      if (!cgLoc || !cgLoc.latitude) {
+        const err = new Error(`Caregiver has no geolocation data. UserID: ${caregiverUserId}`);
+        await logError("directory.web.getNearbyFamilies", err, caregiverUserId);
+        throw err;
+      }
 
       // 2. Get all Families
       const familiesQuery = await wixData.query("Families").find();

@@ -1,4 +1,5 @@
 import { registerMember } from 'backend/register.web';
+import { logError, logInfo } from 'backend/logger.web';
 import wixLocation from 'wix-location';
 
 $w.onReady(() => {
@@ -22,6 +23,8 @@ async function handleSignup() {
     return;
   }
 
+  await logInfo("signUp.handleSignup", `Signup initiated for role: ${role}. Email: ${email}`);
+
   try {
     const result = await registerMember(
       email,
@@ -38,29 +41,35 @@ async function handleSignup() {
 
     // ✅ Safety check
     if (!result || !result.member) {
+      await logError("signUp.handleSignup", new Error(`Registration returned no member object. Email: ${email}, Role: ${role}`));
       showError("Registration failed. Try again.");
       return;
     }
 
+    const memberId = result.member._id;
     const status = result.status;
 
     // ✅ SUCCESS → redirect based on role
     if (status === "ACTIVE") {
+      await logInfo("signUp.handleSignup", `Signup SUCCESS. Status: ACTIVE. Redirecting role '${role}'.`, memberId);
       redirectUser(role);
     }
 
     // ⚠️ EMAIL VERIFICATION REQUIRED
     else if (status === "PENDING") {
+      await logInfo("signUp.handleSignup", `Signup resulted in PENDING status. Email verification needed.`, memberId);
       showError("Please verify your email before continuing.");
     }
 
     // ❌ FALLBACK
     else {
+      await logError("signUp.handleSignup", new Error(`Unexpected registration status: ${status}. Email: ${email}`), memberId);
       showError("Something went wrong. Try again.");
     }
 
   } catch (err) {
     console.error("Signup failed:", err);
+    await logError("signUp.handleSignup", err);
     showError(err.message || "Signup failed");
   }
 }

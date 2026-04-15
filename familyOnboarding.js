@@ -1,5 +1,6 @@
 import { saveFamilyProfile, completeOnboarding, getUserProfile } from 'backend/onboarding.web';
 import { getCoordsFromZip } from 'backend/location.web';
+import { logError, logWarning, logInfo } from 'backend/logger.web';
 import wixLocationFrontend from 'wix-location-frontend';
 import { currentMember } from 'wix-members-frontend';
 
@@ -10,23 +11,46 @@ const STATES = ["stateBasics", "stateNeeds", "stateEnvironment"];
 let currentStateIndex = 0;
 let currentUser = null;
 
+// ⏱️ Helper: wait ms milliseconds
+function wait(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 $w.onReady(async function () {
     $w('#errorText').hide();
 
     // Ensure current user is logged in
     currentUser = await currentMember.getMember();
     if (!currentUser) {
+        await logWarning("familyOnboarding.$w.onReady", "Redirect triggered: No member session found. User not logged in.");
         wixLocationFrontend.to("/");
         return;
     }
 
-    // ✅ Verify Role from Database
-    const profile = await getUserProfile(currentUser._id);
-    if (!profile || profile.role !== "family") {
-        console.warn("Unauthorized access: User is not a family member.");
+    await logInfo("familyOnboarding.$w.onReady", "Member session found, verifying role...", currentUser._id);
+
+    // ✅ Verify Role from Database — with 1-second retry
+    let profile = await getUserProfile(currentUser._id);
+
+    if (!profile) {
+        await logWarning("familyOnboarding.$w.onReady", "Profile not found on first attempt. Retrying in 1s...", currentUser._id);
+        await wait(1000);
+        profile = await getUserProfile(currentUser._id);
+    }
+
+    if (!profile) {
+        await logError("familyOnboarding.$w.onReady", new Error("Profile still missing after retry. Redirecting to home."), currentUser._id);
         wixLocationFrontend.to("/");
         return;
     }
+
+    if (profile.role !== "family") {
+        await logWarning("familyOnboarding.$w.onReady", `Redirect triggered: Wrong role. Expected 'family', got '${profile.role}'`, currentUser._id);
+        wixLocationFrontend.to("/");
+        return;
+    }
+
+    await logInfo("familyOnboarding.$w.onReady", "Role verified as 'family'. Loading onboarding UI.", currentUser._id);
 
     updateUIBasedOnState();
 
@@ -112,9 +136,11 @@ async function submitForm() {
         const familyData = collectFamilyData(currentUser._id);
         await saveFamilyProfile(familyData);
         await completeOnboarding(currentUser._id);
+        await logInfo("familyOnboarding.submitForm", "Family onboarding completed successfully.", currentUser._id);
         wixLocationFrontend.to("/pricing-plans/plans-pricing");
     } catch (error) {
         console.error(error);
+        await logError("familyOnboarding.submitForm", error, currentUser._id);
         showError("Submission failed. Please try again later.");
         $w('#nextBtn').label = "Submit"; // revert
     }

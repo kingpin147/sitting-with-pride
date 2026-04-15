@@ -1,5 +1,6 @@
 import { orders } from 'wix-pricing-plans-backend';
 import { Permissions, webMethod } from "wix-web-module";
+import { logError } from 'backend/logger.web';
 
 /**
  * Checks if the current member has any active pricing plans.
@@ -23,6 +24,7 @@ export const getCurrentMemberPlans = webMethod(
 
     } catch (error) {
       console.error("Error fetching member plans:", error);
+      await logError("pricing.web.getCurrentMemberPlans", error);
       throw new Error("Could not retrieve membership info.");
     }
   }
@@ -40,6 +42,7 @@ export const hasActivePlan = webMethod(
       return activePlans.some(order => order.planName.includes(planName) && order.status === 'ACTIVE');
     } catch (error) {
       console.error("Plan check failed:", error);
+      await logError("pricing.web.hasActivePlan", error);
       return false;
     }
   }
@@ -55,6 +58,7 @@ export const hasAnyActivePlan = webMethod(
       return activePlans.some(order => order.status === 'ACTIVE');
     } catch (error) {
       console.error("Plan check failed:", error);
+      await logError("pricing.web.hasAnyActivePlan", error);
       return false;
     }
   }
