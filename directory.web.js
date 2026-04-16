@@ -21,32 +21,30 @@ function deg2rad(deg) {
 
 export const getNearbyCaregivers = webMethod(
   Permissions.Anyone,
-  async (familyUserId) => {
-      // 1. Get Family coords
-      const familyQuery = await wixData.query("Families")
-        .eq("userId", familyUserId)
-        .find();
-      
-      if (familyQuery.items.length === 0) {
-        const err = new Error(`Family user not found in Families collection. UserID: ${familyUserId}`);
-        await logError("directory.web.getNearbyCaregivers", err, familyUserId);
-        throw err;
-      }
-      const familyLoc = familyQuery.items[0].location;
-      if (!familyLoc || !familyLoc.latitude) {
-        const err = new Error(`Family has no geolocation data. UserID: ${familyUserId}`);
-        await logError("directory.web.getNearbyCaregivers", err, familyUserId);
-        throw err;
+  async (familyUserId = null) => {
+      let familyLoc = null;
+
+      // 1. Get Family coords if ID provided
+      if (familyUserId) {
+          const familyQuery = await wixData.query("FamiliesCollection")
+            .eq("userId", familyUserId)
+            .find();
+          
+          if (familyQuery.items.length > 0) {
+              familyLoc = familyQuery.items[0].location;
+          }
       }
 
       // 2. Get all Caregivers
-      const caregiversQuery = await wixData.query("Caregivers").find();
+      const caregiversQuery = await wixData.query("CaregiversCollection")
+        .eq("isVisible", true)
+        .find();
       const caregivers = caregiversQuery.items;
 
       // 3. Compute distance and sort
       let results = caregivers.map(caregiver => {
           let distance = null;
-          if (caregiver.location && caregiver.location.latitude) {
+          if (familyLoc && familyLoc.latitude && caregiver.location && caregiver.location.latitude) {
                distance = getDistanceFromLatLonInMiles(
                    familyLoc.latitude, 
                    familyLoc.longitude, 
@@ -54,15 +52,28 @@ export const getNearbyCaregivers = webMethod(
                    caregiver.location.longitude
                );
           }
+
+          // 🛡️ Privacy Layer: If no user ID, strip sensitive data
+          if (!familyUserId) {
+              return {
+                  _id: caregiver._id,
+                  fullName: caregiver.fullName,
+                  profilePhoto: caregiver.profilePhoto,
+                  isPublic: true
+              };
+          }
+
           return {
               ...caregiver,
-              distance: distance
+              distance: distance,
+              isPublic: false
           };
       });
 
-      // Filter out caregivers without location and sort
-      results = results.filter(c => c.distance !== null);
-      results.sort((a, b) => a.distance - b.distance);
+      if (familyLoc) {
+          results = results.filter(c => c.distance !== null);
+          results.sort((a, b) => a.distance - b.distance);
+      }
       
       return results;
   }
@@ -70,32 +81,28 @@ export const getNearbyCaregivers = webMethod(
 
 export const getNearbyFamilies = webMethod(
   Permissions.Anyone,
-  async (caregiverUserId) => {
+  async (caregiverUserId = null) => {
+      let cgLoc = null;
+
       // 1. Get Caregiver coords
-      const cgQuery = await wixData.query("Caregivers")
-        .eq("userId", caregiverUserId)
-        .find();
-      
-      if (cgQuery.items.length === 0) {
-        const err = new Error(`Caregiver user not found in Caregivers collection. UserID: ${caregiverUserId}`);
-        await logError("directory.web.getNearbyFamilies", err, caregiverUserId);
-        throw err;
-      }
-      const cgLoc = cgQuery.items[0].location;
-      if (!cgLoc || !cgLoc.latitude) {
-        const err = new Error(`Caregiver has no geolocation data. UserID: ${caregiverUserId}`);
-        await logError("directory.web.getNearbyFamilies", err, caregiverUserId);
-        throw err;
+      if (caregiverUserId) {
+          const cgQuery = await wixData.query("CaregiversCollection")
+            .eq("userId", caregiverUserId)
+            .find();
+          
+          if (cgQuery.items.length > 0) {
+              cgLoc = cgQuery.items[0].location;
+          }
       }
 
       // 2. Get all Families
-      const familiesQuery = await wixData.query("Families").find();
+      const familiesQuery = await wixData.query("FamiliesCollection").find();
       const families = familiesQuery.items;
 
       // 3. Compute distance and sort
       let results = families.map(family => {
           let distance = null;
-          if (family.location && family.location.latitude) {
+          if (cgLoc && cgLoc.latitude && family.location && family.location.latitude) {
                distance = getDistanceFromLatLonInMiles(
                    cgLoc.latitude, 
                    cgLoc.longitude, 
@@ -103,14 +110,28 @@ export const getNearbyFamilies = webMethod(
                    family.location.longitude
                );
           }
+
+          // 🛡️ Privacy Layer: If no user ID, strip sensitive data
+          if (!caregiverUserId) {
+              return {
+                  _id: family._id,
+                  familyName: family.familyName,
+                  city: family.city, // Assuming city is public-safe
+                  isPublic: true
+              };
+          }
+
           return {
               ...family,
-              distance: distance
+              distance: distance,
+              isPublic: false
           };
       });
 
-      results = results.filter(f => f.distance !== null);
-      results.sort((a, b) => a.distance - b.distance);
+      if (cgLoc) {
+          results = results.filter(f => f.distance !== null);
+          results.sort((a, b) => a.distance - b.distance);
+      }
       
       return results;
   }

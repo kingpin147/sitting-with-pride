@@ -32,14 +32,16 @@ $w.onReady(async function () {
     // ✅ Verify Role from Database — with 1-second retry
     let profile = await getUserProfile(currentUser._id);
 
-    if (!profile) {
-        await logWarning("caregiverOnboarding.$w.onReady", "Profile not found on first attempt. Retrying in 1s...", currentUser._id);
-        await wait(1000);
+    // 🔁 Retry up to 3 times with progressive delays (handles DB write race condition on signup)
+    const retryDelays = [1000, 2000, 3000];
+    for (let i = 0; i < retryDelays.length && !profile; i++) {
+        await logWarning("caregiverOnboarding.$w.onReady", `Profile not found. Retry ${i + 1}/3 in ${retryDelays[i]}ms...`, currentUser._id);
+        await wait(retryDelays[i]);
         profile = await getUserProfile(currentUser._id);
     }
 
     if (!profile) {
-        await logError("caregiverOnboarding.$w.onReady", new Error("Profile still missing after retry. Redirecting to home."), currentUser._id);
+        await logError("caregiverOnboarding.$w.onReady", new Error("Profile still missing after 3 retries. Redirecting to home."), currentUser._id);
         wixLocationFrontend.to("/");
         return;
     }

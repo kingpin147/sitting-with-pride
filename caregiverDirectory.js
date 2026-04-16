@@ -9,33 +9,24 @@ $w.onReady(async function () {
 
     try {
         const member = await currentMember.getMember();
-        if (!member) {
-            $w('#loadingText').text = "Please log in to view caregivers.";
-            return;
+        let familyUserId = null;
+        let isAuthorizedFamily = false;
+
+        if (member) {
+            const profile = await getUserProfile(member._id);
+            if (profile && profile.role === "family") {
+                familyUserId = member._id;
+                isAuthorizedFamily = true;
+            }
         }
 
-        // ✅ Verify Role from Database
-        const profile = await getUserProfile(member._id);
-        if (!profile || profile.role !== "family") {
-             $w('#loadingText').text = "Access denied. The directory is only for family members.";
-             return;
-        }
-
-        // ✅ Check for ANY Active Pricing Plan
-        const planActive = await hasAnyActivePlan();
-        if (!planActive) {
-             $w('#loadingText').text = "An active pricing plan is required to view the directory.";
-             return;
-        }
-
-        const caregivers = await getNearbyCaregivers(member._id);
+        const caregivers = await getNearbyCaregivers(familyUserId);
         
         if (caregivers.length === 0) {
-            $w('#loadingText').text = "No caregivers found near your area.";
+            $w('#loadingText').text = "No caregivers found.";
             return;
         }
 
-        // Map data uniquely for the repeater
         $w('#directoryRepeater').data = caregivers.map(cg => ({
             ...cg, 
             _id: cg._id || cg.userId
@@ -43,10 +34,35 @@ $w.onReady(async function () {
 
         $w('#directoryRepeater').onItemReady(($item, itemData, index) => {
             $item('#nameText').text = itemData.fullName;
-            $item('#bioText').text = itemData.bio;
-            $item('#distanceText').text = `${itemData.distance.toFixed(1)} miles away`;
-            $item('#expText').text = `${itemData.yearsOfExperience} yrs exp.`;
-            $item('#rateText').text = `$${itemData.hourlyRate}/hr`;
+            
+            if (itemData.isPublic) {
+                // 🔒 Public/Restricted View
+                if ($item('#bioText')) $item('#bioText').hide();
+                if ($item('#distanceText')) $item('#distanceText').hide();
+                if ($item('#expText')) $item('#expText').hide();
+                if ($item('#rateText')) $item('#rateText').hide();
+                if ($item('#viewProfileBtn')) $item('#viewProfileBtn').label = "Login to see more";
+            } else {
+                // ✅ Full View (Authorized Families)
+                if ($item('#bioText')) {
+                    $item('#bioText').text = itemData.bio;
+                    $item('#bioText').show();
+                }
+                if ($item('#distanceText')) {
+                    $item('#distanceText').text = `${itemData.distance.toFixed(1)} miles away`;
+                    $item('#distanceText').show();
+                }
+                if ($item('#expText')) {
+                    $item('#expText').text = `${itemData.yearsOfExperience} yrs exp.`;
+                    $item('#expText').show();
+                }
+                if ($item('#rateText')) {
+                    $item('#rateText').text = `$${itemData.hourlyRate}/hr`;
+                    $item('#rateText').show();
+                }
+                if ($item('#viewProfileBtn')) $item('#viewProfileBtn').label = "View Profile";
+            }
+
             if (itemData.profilePhoto && $item('#photoImage')) {
                 $item('#photoImage').src = itemData.profilePhoto;
             }

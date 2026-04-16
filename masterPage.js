@@ -26,6 +26,14 @@ $w.onReady(async function () {
             }
         }
 
+        // 🏠 Family Redirection Logic
+        if (profile.role === 'family' && !profile.onboardingCompleted) {
+            if (!path.includes('family-onboarding')) {
+                console.log("Redirecting family to onboarding...");
+                wixLocationFrontend.to('/family-onboarding');
+            }
+        }
+
         // 🏠 Family Menu Item Logic
         if (profile.role === 'family' && hasPlan) {
             const menu = $w('#menu1');
