@@ -2,6 +2,7 @@ import { getNearbyFamilies } from 'backend/directory.web';
 import { currentMember } from 'wix-members-frontend';
 import { getUserProfile } from 'backend/onboarding.web';
 import { hasAnyActivePlan } from 'backend/pricing.web';
+import wixWindowFrontend from 'wix-window-frontend';
 
 $w.onReady(async function () {
     $w('#loadingText').show();
@@ -50,11 +51,23 @@ $w.onReady(async function () {
                     $item('#distanceText').text = `${itemData.distance.toFixed(1)} miles away`;
                     $item('#distanceText').show();
                 }
-                if ($item('#viewProfileBtn')) $item('#viewProfileBtn').label = "View Profile";
+             
             }
 
             if (itemData.familyPhoto && $item('#photoImage')) {
                 $item('#photoImage').src = itemData.familyPhoto;
+            }
+
+            // Request to Connect Button Logic
+            if ($item('#requestToConnect')) {
+                $item('#requestToConnect').show();
+                $item('#requestToConnect').onClick(() => {
+                    wixWindowFrontend.openLightbox("ConnectionRequest", {
+                        recipientId: itemData.userId,
+                        recipientName: itemData.familyName,
+                        recipientEmail: itemData.email
+                    });
+                });
             }
         });
 

@@ -2,7 +2,7 @@ import { getNearbyCaregivers } from 'backend/directory.web';
 import { currentMember } from 'wix-members-frontend';
 import { getUserProfile } from 'backend/onboarding.web';
 import { hasAnyActivePlan } from 'backend/pricing.web';
-
+import wixWindowFrontend from 'wix-window-frontend';
 
 $w.onReady(async function () {
     $w('#loadingText').show();
@@ -69,6 +69,19 @@ $w.onReady(async function () {
                 $item('#photoImage').src = itemData.profilePhoto;
             }
 
+            // Request to Connect Button Logic
+            if ($item('#requestToConnect')) {
+                // If the user is public and they are viewing a public restricted version, or no plan
+                // The client said "Free = Submit 1-3 connection requests" so they can see the button.
+                $item('#requestToConnect').show();
+                $item('#requestToConnect').onClick(() => {
+                    wixWindowFrontend.openLightbox("ConnectionRequest", {
+                        recipientId: itemData.userId,
+                        recipientName: itemData.fullName,
+                        recipientEmail: itemData.email
+                    });
+                });
+            }
 
         });
 
