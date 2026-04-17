@@ -17,6 +17,7 @@ export const registerMember = webMethod(
         userId: memberId,
         firstName: extraData.firstName,
         lastName: extraData.lastName,
+        email: email, // Added email
         role: extraData.role,
         plan: "free",
         onboardingCompleted: false

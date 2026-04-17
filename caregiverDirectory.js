@@ -3,6 +3,7 @@ import { currentMember } from 'wix-members-frontend';
 import { getUserProfile } from 'backend/onboarding.web';
 import { hasAnyActivePlan } from 'backend/pricing.web';
 
+
 $w.onReady(async function () {
     $w('#loadingText').show();
     $w('#directoryRepeater').hide();
@@ -10,13 +11,15 @@ $w.onReady(async function () {
     try {
         const member = await currentMember.getMember();
         let familyUserId = null;
-        let isAuthorizedFamily = false;
 
         if (member) {
-            const profile = await getUserProfile(member._id);
-            if (profile && profile.role === "family") {
+            const [profile, hasPlan] = await Promise.all([
+                getUserProfile(member._id),
+                hasAnyActivePlan()
+            ]);
+            
+            if (profile && profile.role === "family" && hasPlan) {
                 familyUserId = member._id;
-                isAuthorizedFamily = true;
             }
         }
 
@@ -41,9 +44,8 @@ $w.onReady(async function () {
                 if ($item('#distanceText')) $item('#distanceText').hide();
                 if ($item('#expText')) $item('#expText').hide();
                 if ($item('#rateText')) $item('#rateText').hide();
-                if ($item('#viewProfileBtn')) $item('#viewProfileBtn').label = "Login to see more";
             } else {
-                // ✅ Full View (Authorized Families)
+                // ✅ Full View (Authorized Families with Plan)
                 if ($item('#bioText')) {
                     $item('#bioText').text = itemData.bio;
                     $item('#bioText').show();
@@ -66,6 +68,8 @@ $w.onReady(async function () {
             if (itemData.profilePhoto && $item('#photoImage')) {
                 $item('#photoImage').src = itemData.profilePhoto;
             }
+
+
         });
 
         $w('#loadingText').hide();

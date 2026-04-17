@@ -18,14 +18,15 @@ export const saveCaregiverProfile = webMethod(
         // Update
         return await wixData.update("CaregiversCollection", {
           ...existing.items[0],
-          ...profileData
+          ...profileData,
+          isVisible: profileData.isVisible !== undefined ? profileData.isVisible : existing.items[0].isVisible
         });
       } else {
         // Insert new
         const toInsert = {
           ...profileData,
           verificationStatus: "pending",
-          isVisible: false,
+          isVisible: profileData.isVisible || false,
           badge: "community"
         };
         return await wixData.insert("CaregiversCollection", toInsert);

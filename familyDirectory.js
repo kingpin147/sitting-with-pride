@@ -1,6 +1,7 @@
 import { getNearbyFamilies } from 'backend/directory.web';
 import { currentMember } from 'wix-members-frontend';
 import { getUserProfile } from 'backend/onboarding.web';
+import { hasAnyActivePlan } from 'backend/pricing.web';
 
 $w.onReady(async function () {
     $w('#loadingText').show();
@@ -11,8 +12,12 @@ $w.onReady(async function () {
         let caregiverUserId = null;
 
         if (member) {
-            const profile = await getUserProfile(member._id);
-            if (profile && profile.role === "caregiver") {
+            const [profile, hasPlan] = await Promise.all([
+                getUserProfile(member._id),
+                hasAnyActivePlan()
+            ]);
+            
+            if (profile && profile.role === "caregiver" && hasPlan) {
                 caregiverUserId = member._id;
             }
         }
@@ -34,11 +39,9 @@ $w.onReady(async function () {
             
             if (itemData.isPublic) {
                 // 🔒 Public/Restricted View
-                if ($item('#needsText')) $item('#needsText').hide();
                 if ($item('#distanceText')) $item('#distanceText').hide();
-                if ($item('#viewProfileBtn')) $item('#viewProfileBtn').label = "Login to see more";
             } else {
-                // ✅ Full View (Authorized Caregivers)
+                // ✅ Full View (Authorized Caregivers with Plan)
                 if ($item('#needsText')) {
                     $item('#needsText').text = `${itemData.careTypeNeeded} • ${itemData.childCount} Child(ren)`;
                     $item('#needsText').show();

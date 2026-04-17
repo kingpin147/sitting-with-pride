@@ -53,18 +53,20 @@ export const getNearbyCaregivers = webMethod(
                );
           }
 
-          // 🛡️ Privacy Layer: If no user ID, strip sensitive data
+          // 🛡️ Privacy Layer: If no authorized user ID provided, strip sensitive data
           if (!familyUserId) {
               return {
                   _id: caregiver._id,
                   fullName: caregiver.fullName,
                   profilePhoto: caregiver.profilePhoto,
+                  role: caregiver.role || "Caregiver", 
                   isPublic: true
               };
           }
 
           return {
               ...caregiver,
+              email: caregiver.email || "", // Included for messaging
               distance: distance,
               isPublic: false
           };
@@ -111,18 +113,19 @@ export const getNearbyFamilies = webMethod(
                );
           }
 
-          // 🛡️ Privacy Layer: If no user ID, strip sensitive data
+          // 🛡️ Privacy Layer: If no authorized caregiver ID, strip sensitive data
           if (!caregiverUserId) {
               return {
                   _id: family._id,
                   familyName: family.familyName,
-                  city: family.city, // Assuming city is public-safe
+                  city: family.zipCode, 
                   isPublic: true
               };
           }
 
           return {
               ...family,
+              email: family.email || "", // Included for messaging
               distance: distance,
               isPublic: false
           };

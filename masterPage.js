@@ -19,9 +19,7 @@ $w.onReady(async function () {
 
         // 🛡️ Caregiver Redirection Logic
         if (profile.role === 'caregiver' && hasPlan && !profile.onboardingCompleted) {
-            // If not already on the onboarding page, redirect them
             if (!path.includes('caregiver-onboarding')) {
-                console.log("Redirecting new caregiver with plan to onboarding...");
                 wixLocationFrontend.to('/caregiver-onboarding');
             }
         }
@@ -29,41 +27,76 @@ $w.onReady(async function () {
         // 🏠 Family Redirection Logic
         if (profile.role === 'family' && !profile.onboardingCompleted) {
             if (!path.includes('family-onboarding')) {
-                console.log("Redirecting family to onboarding...");
                 wixLocationFrontend.to('/family-onboarding');
             }
         }
 
-        // 🏠 Family Menu Item Logic
-        if (profile.role === 'family' && hasPlan) {
-            const menu = $w('#menu1');
-            if (menu) {
-                let menuItems = menu.menuItems;
+        // 🛠️ Dynamic Menu Restructuring
+        const menu = $w('#menu1');
+        if (menu) {
+            let menuItems = menu.menuItems;
+
+            // 1. Handle "Family" Dropdown
+            let familyMenu = menuItems.find(item => item.label === "Family" || item.label === "Families");
+            if (familyMenu) {
+                familyMenu.label = "Family"; // Fix typo: "Families" -> "Family"
+                familyMenu.menuItems = familyMenu.menuItems || [];
+                const onboardingExists = familyMenu.menuItems.some(i => i.label === "Family Onboarding");
+                if (!onboardingExists) {
+                    familyMenu.menuItems.push({
+                        label: "Family Onboarding",
+                        link: "/family-onboarding"
+                    });
+                }
                 
-                // Add Care Givers Directory if not exists
-                const directoryExists = menuItems.some(item => item.label === "Care Givers Directory" || item.link === "/caregiver-directory");
-                if (!directoryExists) {
-                    menuItems.push({
-                        label: "Care Givers Directory",
-                        link: "/caregiver-directory",
-                        id: "caregiver-directory-link",
-                        selected: false
-                    });
+                // Add Caregiver Directory if plan active
+                if (hasPlan) {
+                     const directoryExists = familyMenu.menuItems.some(item => item.label === "Caregiver Directory");
+                     if (!directoryExists) {
+                         familyMenu.menuItems.push({
+                             label: "Caregiver Directory",
+                             link: "/caregiver-directory"
+                         });
+                     }
                 }
-
-                // Add Background Check if not exists
-                const bgCheckExists = menuItems.some(item => item.label === "Background Check" || item.link === "/bgchecker");
-                if (!bgCheckExists) {
-                    menuItems.push({
-                        label: "Background Check",
-                        link: "/bgchecker",
-                        id: "bg-check-link",
-                        selected: false
-                    });
-                }
-
-                menu.menuItems = menuItems;
             }
+
+            // 2. Handle "Caregivers" Dropdown
+            let caregiverMenu = menuItems.find(item => item.label === "Caregivers");
+            if (caregiverMenu) {
+                caregiverMenu.menuItems = caregiverMenu.menuItems || [];
+                const onboardingExists = caregiverMenu.menuItems.some(i => i.label === "Caregiver Onboarding");
+                if (!onboardingExists) {
+                    caregiverMenu.menuItems.push({
+                        label: "Caregiver Onboarding",
+                        link: "/caregiver-onboarding"
+                    });
+                }
+
+                // Background Check
+                const bgCheckExists = caregiverMenu.menuItems.some(item => item.label === "Background Check");
+                if (!bgCheckExists) {
+                    caregiverMenu.menuItems.push({
+                        label: "Background Check",
+                        link: "/bgchecker"
+                    });
+                }
+            }
+
+            menu.menuItems = menuItems;
+        }
+
+        // 🔙 Navigation "Back" button for Pricing Page
+        if (path.includes('plans-pricing')) {
+            if ($w('#backToOnboarding')) {
+                $w('#backToOnboarding').show();
+                $w('#backToOnboarding').onClick(() => {
+                    if (profile.role === 'caregiver') wixLocationFrontend.to('/caregiver-onboarding');
+                    else wixLocationFrontend.to('/family-onboarding');
+                });
+            }
+        } else {
+            if ($w('#backToOnboarding')) $w('#backToOnboarding').hide();
         }
 
     } catch (err) {

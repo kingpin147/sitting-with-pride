@@ -30,20 +30,23 @@ $w.onReady(async function () {
 
     await logInfo("familyOnboarding.$w.onReady", "Member session found, verifying role...", currentUser._id);
 
-    // ✅ Verify Role from Database — with 1-second retry
-    let profile = await getUserProfile(currentUser._id);
-
-    // 🔁 Retry up to 3 times with progressive delays (handles DB write race condition on signup)
-    const retryDelays = [1000, 2000, 3000];
-    for (let i = 0; i < retryDelays.length && !profile; i++) {
-        await logWarning("familyOnboarding.$w.onReady", `Profile not found. Retry ${i + 1}/3 in ${retryDelays[i]}ms...`, currentUser._id);
-        await wait(retryDelays[i]);
+    // ✅ Verify Role from Database — with progressive retry
+    let profile = null;
+    const retryDelays = [500, 1000, 2000, 3000];
+    
+    for (let i = 0; i <= retryDelays.length; i++) {
         profile = await getUserProfile(currentUser._id);
+        if (profile) break;
+        
+        if (i < retryDelays.length) {
+            await logWarning("familyOnboarding.$w.onReady", `Profile not found. Retry ${i + 1}/${retryDelays.length} in ${retryDelays[i]}ms...`, currentUser._id);
+            await wait(retryDelays[i]);
+        }
     }
 
     if (!profile) {
-        await logError("familyOnboarding.$w.onReady", new Error("Profile still missing after 3 retries. Redirecting to home."), currentUser._id);
-        wixLocationFrontend.to("/");
+        await logError("familyOnboarding.$w.onReady", new Error("Profile still missing after all retries. User might have signed up but DB write failed."), currentUser._id);
+        showError("We couldn't find your profile. Please try refreshing the page.");
         return;
     }
 
@@ -57,8 +60,8 @@ $w.onReady(async function () {
 
     // ✅ Handle Already Onboarded Case
     if (profile.onboardingCompleted) {
-        await logInfo("familyOnboarding.$w.onReady", "Family already completed onboarding. Redirecting to pricing.", currentUser._id);
-        wixLocationFrontend.to("/pricing-plans/plans-pricing");
+        await logInfo("familyOnboarding.$w.onReady", "Family already completed onboarding. Redirecting to directory.", currentUser._id);
+        wixLocationFrontend.to("/caregiver-directory");
         return;
     }
 

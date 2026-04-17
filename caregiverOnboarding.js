@@ -29,20 +29,23 @@ $w.onReady(async function () {
 
     await logInfo("caregiverOnboarding.$w.onReady", "Member session found, verifying role...", currentUser._id);
 
-    // ✅ Verify Role from Database — with 1-second retry
-    let profile = await getUserProfile(currentUser._id);
-
-    // 🔁 Retry up to 3 times with progressive delays (handles DB write race condition on signup)
-    const retryDelays = [1000, 2000, 3000];
-    for (let i = 0; i < retryDelays.length && !profile; i++) {
-        await logWarning("caregiverOnboarding.$w.onReady", `Profile not found. Retry ${i + 1}/3 in ${retryDelays[i]}ms...`, currentUser._id);
-        await wait(retryDelays[i]);
+    // ✅ Verify Role from Database — with progressive retry
+    let profile = null;
+    const retryDelays = [500, 1000, 2000, 3000];
+    
+    for (let i = 0; i <= retryDelays.length; i++) {
         profile = await getUserProfile(currentUser._id);
+        if (profile) break;
+        
+        if (i < retryDelays.length) {
+            await logWarning("caregiverOnboarding.$w.onReady", `Profile not found. Retry ${i + 1}/${retryDelays.length} in ${retryDelays[i]}ms...`, currentUser._id);
+            await wait(retryDelays[i]);
+        }
     }
 
     if (!profile) {
-        await logError("caregiverOnboarding.$w.onReady", new Error("Profile still missing after 3 retries. Redirecting to home."), currentUser._id);
-        wixLocationFrontend.to("/");
+        await logError("caregiverOnboarding.$w.onReady", new Error("Profile still missing after all retries. Redirecting to home."), currentUser._id);
+        showError("We couldn't find your profile. Please try refreshing the page.");
         return;
     }
 
@@ -56,7 +59,7 @@ $w.onReady(async function () {
 
     // ✅ Handle Already Onboarded Case
     if (profile.onboardingCompleted) {
-        $w('#headingText').text = "You have already applied wait for a family to contact you";
+        $w('#headingText').text = "You have already completed your profile. We will notify you once families are looking for care in your area!";
         $w('#multiStateBox').hide();
         $w('#nextBtn').hide();
         $w('#backBtn').hide();
@@ -224,7 +227,8 @@ function collectCaregiverData(userId, photoUrl) {
         services: $w('#services').value,
         bio: $w('#bio').value,
         languages: $w('#languages').value,
-        profilePhoto: photoUrl || ""
+        profilePhoto: photoUrl || "",
+        isVisible: $w('#makePublic') ? $w('#makePublic').checked : false
     };
 }
 
